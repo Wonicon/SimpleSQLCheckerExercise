@@ -2,20 +2,20 @@ import java.util.Scanner;
 import java.util.ArrayList;
 
 public class Tokenizer {
-  private TokenMatch[] tokenMatches = {
-      new TokenMatch(Token.OP, "\\+|-|/"),  // Don't forget 'star'
-      new TokenMatch(Token.PRED, "<>|!=|<=|>=|=|>|<"),
-      new TokenMatch(Token.BOOL, "AND|OR"),
-      new TokenMatch(Token.LP, "\\("),
-      new TokenMatch(Token.RP, "\\)"),
-      new TokenMatch(Token.COMMA, ","),
-      new TokenMatch(Token.FROM, "FROM"),
-      new TokenMatch(Token.SELECT, "SELECT"),
-      new TokenMatch(Token.SEMI, ";"),
-      new TokenMatch(Token.STAR, "\\*"),
-      new TokenMatch(Token.WHERE, "WHERE"),
-      new TokenMatch(Token.ITEM, "\\w+"),
-      new TokenMatch(Token.POINT, "\\."),
+  private TokenDef[] tokenDefs = {
+      new TokenDef(Token.OP, "\\+|-|/"),  // Don't forget 'star'
+      new TokenDef(Token.PRED, "<>|!=|<=|>=|=|>|<"),
+      new TokenDef(Token.BOOL, "AND|OR"),
+      new TokenDef(Token.LP, "\\("),
+      new TokenDef(Token.RP, "\\)"),
+      new TokenDef(Token.COMMA, ","),
+      new TokenDef(Token.FROM, "FROM"),
+      new TokenDef(Token.SELECT, "SELECT"),
+      new TokenDef(Token.SEMI, ";"),
+      new TokenDef(Token.STAR, "\\*"),
+      new TokenDef(Token.WHERE, "WHERE"),
+      new TokenDef(Token.ITEM, "\\w+"),
+      new TokenDef(Token.POINT, "\\."),
   };
 
   private class Result {
@@ -50,10 +50,10 @@ public class Tokenizer {
   }
 
   private Result match(String input) {
-    for (TokenMatch tokenMatch : tokenMatches) {
-      String matched = tokenMatch.match(input);
+    for (TokenDef tokenDef : tokenDefs) {
+      String matched = tokenDef.match(input);
       if (matched != null) {
-        return new Result(tokenMatch.type(), matched.trim(), input.substring(matched.length()));
+        return new Result(tokenDef.type(), matched.trim(), input.substring(matched.length()));
       }
     }
     return null;

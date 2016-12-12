@@ -72,7 +72,7 @@ public class SQLChecker {
       return false;
     }
 
-    // TokenMatch is ITEM now.
+    // TokenDef is ITEM now.
     String maybeTableOrColumn = tk.curSymbol();
 
     token = tk.nextToken();
@@ -285,9 +285,18 @@ public class SQLChecker {
   }
 
   public static void main(String[] args) {
-    String test;
+    String[] testcases = {
+        "SELECT t.id, product p FROM table1 t, table2 WHERE t.id=10;",
+        //"SELECT id FROM t WHERE sex=1 AND age<30 OR name='guguda';",
+        "SELECT id FROM, t WHERE sex=1",
+        "SELECT name FROM table1 t WHERE;",
+        "SELECT * FROM table1 t WHERE aa AND id=1",
+        "SELECT * FROM t1, t2;",
+        "SELECT * p FROM t;",
+    };
 
-    test = "SELECT * from table1 t, table2 where (a.c < 1 AND a.c > 1) AND a + 1 = 2;";
-    System.out.println(test + ": " + new SQLChecker(test).parseSql());
+    for (String testcase : testcases) {
+      System.out.println(testcase + ": " + new SQLChecker(testcase).parseSql());
+    }
   }
 }

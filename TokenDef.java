@@ -2,9 +2,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Match a specific token.
+ * This class represents a definition for one type of token.
+ * It holds the token's type, and use the regex to distinguish whether
+ * one prefix of a string belongs to the token type it represents.
  */
-class TokenMatch {
+class TokenDef {
+  /**
+   * The enumeration symbol to mark this token's type.
+   */
   private Token type;
 
   /**
@@ -12,7 +17,7 @@ class TokenMatch {
    */
   private Pattern pattern;
 
-  TokenMatch(Token type, String regex) {
+  TokenDef(Token type, String regex) {
     this.type = type;
     pattern = Pattern.compile("^ *(" + regex + ")", Pattern.CASE_INSENSITIVE);
   }
