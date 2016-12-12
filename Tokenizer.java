@@ -3,6 +3,7 @@ import java.util.ArrayList;
 
 public class Tokenizer {
   private TokenDef[] tokenDefs = {
+      new StringLiteralTokenDef(Token.StringLiteral),
       new TokenDef(Token.OP, "\\+|-|/"),  // Don't forget 'star'
       new TokenDef(Token.PRED, "<>|!=|<=|>=|=|>|<"),
       new TokenDef(Token.BOOL, "AND|OR"),

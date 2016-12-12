@@ -19,7 +19,12 @@ class TokenDef {
 
   TokenDef(Token type, String regex) {
     this.type = type;
-    pattern = Pattern.compile("^ *(" + regex + ")", Pattern.CASE_INSENSITIVE);
+    if (regex != null) {
+      this.pattern = Pattern.compile("^ *(" + regex + ")", Pattern.CASE_INSENSITIVE);
+    }
+    else {
+      this.pattern = null;
+    }
   }
 
   Token type() {

@@ -173,6 +173,10 @@ public class SQLChecker {
         else {
           return false;
         }
+        break;
+      case StringLiteral:
+        TQ.add(Token.Term);
+        break;
       }
       token = tk.nextToken();
     }
@@ -186,11 +190,7 @@ public class SQLChecker {
   private Map<Token, Integer> priority = new HashMap<>();
 
   private boolean verifyTokenQueue() {
-    if (!matchParenthesis()) {
-      return false;
-    }
-
-    return checkRoot(0, TQ.size(), Token.NonToken);
+    return matchParenthesis() && checkRoot(0, TQ.size(), Token.NonToken);
   }
 
   private boolean matchParenthesis() {
@@ -287,7 +287,7 @@ public class SQLChecker {
   public static void main(String[] args) {
     String[] testcases = {
         "SELECT t.id, product p FROM table1 t, table2 WHERE t.id=10;",
-        //"SELECT id FROM t WHERE sex=1 AND age<30 OR name='guguda';",
+        "SELECT id FROM t WHERE name='guguda';",
         "SELECT id FROM, t WHERE sex=1",
         "SELECT name FROM table1 t WHERE;",
         "SELECT * FROM table1 t WHERE aa AND id=1",

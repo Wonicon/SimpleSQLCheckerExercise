@@ -11,6 +11,7 @@ enum Token {
   LP,      // (
   RP,      // )
   ITEM,    // w+
+  StringLiteral,
   POINT,
   NonToken,
   Term,
