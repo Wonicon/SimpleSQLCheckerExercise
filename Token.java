@@ -6,14 +6,12 @@ enum Token {
   SEMI,    // ;
   STAR,    // *
   OP,      // binary operation, ignore precedence.
-  PRED,    // >, <, =, ...
+  CMP,    // >, <, =, ...
   BOOL,    // AND, OR
   LP,      // (
   RP,      // )
   ITEM,    // w+
   StringLiteral,
-  POINT,
   NonToken,
-  Term,
   END
 }

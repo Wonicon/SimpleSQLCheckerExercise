@@ -1,11 +1,10 @@
-import java.util.Scanner;
-import java.util.ArrayList;
+import java.util.*;
 
 public class Tokenizer {
   private static TokenDef[] tokenDefs = {
       new StringLiteralTokenDef(Token.StringLiteral),
       new TokenDef(Token.OP, "\\+|-|/"),  // Don't forget 'star'
-      new TokenDef(Token.PRED, "<>|!=|<=|>=|=|>|<"),
+      new TokenDef(Token.CMP, "<>|!=|<=|>=|=|>|<"),
       new TokenDef(Token.BOOL, "AND|OR"),
       new TokenDef(Token.LP, "\\("),
       new TokenDef(Token.RP, "\\)"),
@@ -15,9 +14,21 @@ public class Tokenizer {
       new TokenDef(Token.SEMI, ";"),
       new TokenDef(Token.STAR, "\\*"),
       new TokenDef(Token.WHERE, "WHERE"),
-      new TokenDef(Token.ITEM, "\\w+"),
-      new TokenDef(Token.POINT, "\\."),
+      new TokenDef(Token.ITEM, "(\\w+\\.)?\\w+"),
   };
+
+  /**
+   * 在 SELECT 和 WHERE 部分被引用的表名集合。
+   */
+  private Set<String> referencedTables = new TreeSet<>();
+
+  /**
+   * <code>referenceTables</code> 的 getter.
+   * @return 在 SELECT 和 WHERE 部分被引用的表名集合。
+   */
+  public Set<String> getReferencedTables() {
+    return referencedTables;
+  }
 
   /**
    * Token 序列。
@@ -30,15 +41,10 @@ public class Tokenizer {
   private ArrayList<String> literalQueue = new ArrayList<>();
 
   /**
-   * 游标位置，在对应下表的 token 的左侧。
-   */
-  private int queueHead = 0;
-
-  /**
    * 将输入的 SQL 语句分解成 token 序列
    * @param input 输入的 SQL 语句
    */
-  Tokenizer(String input) {
+  public Tokenizer(String input) {
     while (!input.isEmpty()) {
       Token type = Token.NonToken;
       String matched = "";
@@ -62,6 +68,13 @@ public class Tokenizer {
         break;
       }
     }
+
+    // 记录 TableName.ColName 中的 TableName
+    for (int i = 0; i < tokenQueue.size(); i++) {
+      if (tokenQueue.get(i) == Token.ITEM && literalQueue.get(i).indexOf('.') != -1) {
+        referencedTables.add(literalQueue.get(i).split("\\.")[0]);  // 分隔字符串是正则表达式，需要转移字面 . 号。
+      }
+    }
   }
 
   /**
@@ -69,61 +82,61 @@ public class Tokenizer {
    * 但是空输入也是不接受的，所以对实际结果没有影响。
    * @return 是否发生词法错误。
    */
-  boolean isError() {
+  public boolean isError() {
     return tokenQueue.isEmpty();
   }
 
   /**
-   * @return 是否还有后续 token.
+   * 获取第 i 位的词法符号（Token）。超出范围统一返回 <code>Token.END</code>
+   * @param i Token 的位置。
+   * @return Token 的类型。
    */
-  boolean hasNext() {
-    return queueHead < tokenQueue.size() && !isError();
-  }
-
-  /**
-   * @return 最近一次 <code>nextToken</code> 返回的 token 对应的字符串。
-   */
-  String curSymbol() {
-    return literalQueue.get(queueHead - 1);
-  }
-
-  /**
-   * 获取下一位 token 的类型，同时将游标前进一位。
-   * 执行之前，游标与 token 序列的相对关系如下：
-   *   A | B C E ...
-   * 执行之后如下：
-   *   A B | C E ...
-   * 返回的是类型 B
-   *
-   * @return 下一个 token 的类型，若 token 序列已经全部遍历，返回 END.
-   */
-  Token nextToken() {
-    return (queueHead < tokenQueue.size()) ? tokenQueue.get(queueHead++) : Token.END;
-  }
-
-  /**
-   * 将游标回退一位。若已经遍历完 token 序列，即用户获得 END 符号后，回退不产生实际效果。
-   * 之后仍然获得 END 符号。
-   */
-  void back() {
-    if (queueHead < tokenQueue.size()) {
-      queueHead--;
+  public Token token(int i) {
+    if (i < tokenQueue.size()) {
+      return tokenQueue.get(i);
+    }
+    else {
+      return Token.END;
     }
   }
 
   /**
-   * 从标准输入逐行接受 SQL 语句，观察分解的 token 序列。
-   * @param args 不使用
+   * 获取第 i 位词法符号对应的字符串。超出范围统一返回空串。
+   * @param i Token 的位置。
+   * @return Token 的字符串。
    */
-  public static void main(String[] args) {
-    Scanner input = new Scanner(System.in);
-    System.out.println(">>>");
-    while (input.hasNext()) {
-      Tokenizer tk = new Tokenizer(input.nextLine());
-      while (tk.hasNext()) {
-        System.out.println(tk.nextToken() + " ");
-      }
-      System.out.println("\n>>>");
+  public String str(int i) {
+    if (i < literalQueue.size()) {
+      return literalQueue.get(i);
     }
+    else {
+      return "";
+    }
+  }
+
+  /**
+   * 验证 <code>token</code> 是否是允许出现在表达式中的符号。
+   * @param token 待验证的符号。
+   * @return 如果 <code>token</code> 是允许出现在表达式中的符号，返回 <code>true</code>, 否则 <code>false</code>.
+   */
+  public static boolean isAllowedInExp(Token token) {
+    Set<Token> tokens = new HashSet<>();
+    tokens.add(Token.ITEM);
+    tokens.add(Token.BOOL);
+    tokens.add(Token.CMP);
+    tokens.add(Token.OP);
+    tokens.add(Token.LP);
+    tokens.add(Token.RP);
+    tokens.add(Token.StringLiteral);
+
+    return tokens.contains(token);
+  }
+
+  /**
+   * 返回 Token 的数量。
+   * @return Token 的数量。
+   */
+  public int length() {
+    return tokenQueue.size();
   }
 }
