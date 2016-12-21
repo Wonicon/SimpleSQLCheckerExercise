@@ -1,3 +1,5 @@
+import com.sun.corba.se.spi.ior.IORTemplate;
+
 import java.util.*;
 
 public class Tokenizer {
@@ -14,6 +16,8 @@ public class Tokenizer {
       new TokenDef(Token.SEMI, ";"),
       new TokenDef(Token.STAR, "\\*"),
       new TokenDef(Token.WHERE, "WHERE"),
+      new TokenDef(Token.IS, "IS"),
+      new TokenDef(Token.NULL, "(NOT +)?NULL"),
       new TokenDef(Token.ITEM, "(\\w+\\.)?\\w+"),
   };
 
@@ -127,8 +131,16 @@ public class Tokenizer {
     tokens.add(Token.OP);
     tokens.add(Token.LP);
     tokens.add(Token.RP);
+    tokens.add(Token.IS);
+    tokens.add(Token.NULL);
     tokens.add(Token.StringLiteral);
 
+    return tokens.contains(token);
+  }
+
+  public static boolean isValue(Token token) {
+    Set<Token> tokens = new HashSet<>();
+    Collections.addAll(tokens, Token.ITEM, Token.StringLiteral, Token.NULL);
     return tokens.contains(token);
   }
 

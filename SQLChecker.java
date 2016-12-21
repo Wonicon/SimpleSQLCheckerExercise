@@ -37,9 +37,11 @@ public class SQLChecker {
     tk = new Tokenizer(input);
 
     priority.put(Token.BOOL, 10);
+    priority.put(Token.IS, 9);
     priority.put(Token.CMP, 9);
     priority.put(Token.OP, 8);
     priority.put(Token.ITEM, 7);
+    priority.put(Token.NULL, 7);
     priority.put(Token.StringLiteral, 7);
   }
 
@@ -207,7 +209,7 @@ public class SQLChecker {
    * 验证表达式的括号匹配情况以及表达式结构的合法性。
    */
   private boolean verifyTokenQueue() {
-    return matchParenthesis() && checkRoot(0, TQ.size(), Token.NonToken);
+    return matchParenthesis() && checkRoot(0, TQ.size(), Token.NonToken, true);
   }
 
   /**
@@ -232,33 +234,10 @@ public class SQLChecker {
     return lpIdx.isEmpty();
   }
 
-  /**
-   * 递归验证表达式语法树的合法性。
-   * @param start 子表达式的起始位置。
-   * @param end 子表达式的结束位置（不包含）。
-   * @param parent 父节点类型，用于类型一致性验证。
-   * @return 是否通过验证。
-   */
-  private boolean checkRoot(int start, int end, Token parent) {
-    // 空树。
-    if (start >= end) {
-      return false;
-    }
-
-    // 叶子节点。叶子节点必须是值类型（不含布尔型），并且其父节点必须是接收值类型的操作符。
-    if (start == end - 1) {
-      return (TQ.get(start) == Token.ITEM || TQ.get(start) == Token.StringLiteral) && (parent == Token.OP || parent == Token.CMP);
-    }
-
-    // 跳过括号。
-    if (TQ.get(start) == Token.LP && L2R.get(start) == end - 1) {
-      return checkRoot(start + 1, end - 1, parent);
-    }
-
+  private int findRoot(int start, int end) {
     // 找到该子树的根节点。
     int maxPri = 0;
     int rootIdx = -1;
-    Token root = Token.NonToken;
     for (int i = start; i < end; i++) {
       Token t = TQ.get(i);
       Integer pri;
@@ -268,24 +247,65 @@ public class SQLChecker {
       else if ((pri = priority.get(t)) != null) {
         if (pri > maxPri) {
           maxPri = pri;
-          root = t;
           rootIdx = i;
         }
       }
       else {
+        return -1;
+      }
+    }
+    return rootIdx;
+  }
+
+  /**
+   * 递归验证表达式语法树的合法性。
+   * @param start 子表达式的起始位置。
+   * @param end 子表达式的结束位置（不包含）。
+   * @param parent 父节点类型，用于类型一致性验证。
+   * @param isLeft 是否是父节点的左节点。
+   * @return 是否通过验证。
+   */
+  private boolean checkRoot(int start, int end, Token parent, boolean isLeft) {
+    // 空树。
+    if (start >= end) {
+      return false;
+    }
+
+    // 叶子节点。叶子节点必须是值类型（不含布尔型），并且其父节点必须是接收值类型的操作符。
+    if (start == end - 1) {
+      switch (TQ.get(start)) {
+      case ITEM:
+        return parent == Token.OP || parent == Token.CMP || (parent == Token.IS && isLeft);
+      case StringLiteral:
+        return parent == Token.CMP;
+      case NULL:
+        return parent == Token.IS && !isLeft;
+      default:
         return false;
       }
     }
 
+    // 跳过括号。
+    if (TQ.get(start) == Token.LP && L2R.get(start) == end - 1) {
+      return checkRoot(start + 1, end - 1, parent, true);
+    }
+
+    int rootIdx = findRoot(start, end);
+    if (rootIdx == -1) {
+      return false;
+    }
+    Token root = TQ.get(rootIdx);
+
     // 递归验证左右子树。
-    boolean fineLeft = checkRoot(start, rootIdx, root);
-    boolean fineRight = checkRoot(rootIdx + 1, end, root);
+    boolean fineLeft = checkRoot(start, rootIdx, root, true);
+    boolean fineRight = checkRoot(rootIdx + 1, end, root, false);
 
     // 左右子树合法并且该子树运算结果可以被父节点接收。
     // 顶层可接收布尔和比较的结果，不能接收算数结果。
     return  fineLeft && fineRight
-        && (parent != Token.NonToken || root == Token.BOOL || root == Token.CMP)
-        && (parent != Token.BOOL || root == Token.BOOL || root == Token.CMP);
+        && (parent != Token.NonToken || (root == Token.BOOL || root == Token.CMP || root == Token.IS))  // WHERE 层可以接受子句是布尔或比较
+        && (parent != Token.BOOL || (root == Token.BOOL || root == Token.CMP || root == Token.IS))  // BOOL 层可以接受子句是布尔或比较
+        ;
   }
 
   private static void test(String sql, boolean expect, String desc) {
@@ -311,5 +331,6 @@ public class SQLChecker {
     test("SELECT c from B where C.a = 1", false, null);
     test("SELECT cnt(C.a) from C where C.a = 1", true, null);
     test("SELECT cnt(B.a) from C where C.a = 1", false, null);
+    test("SELECT a from C where d is not null", true, "测试 IS NOT NULL");
   }
 }

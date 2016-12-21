@@ -12,6 +12,8 @@ enum Token {
   RP,      // )
   ITEM,    // w+
   StringLiteral,
+  NULL,    // [NOT] NULL
+  IS,
   NonToken,
   END
 }
