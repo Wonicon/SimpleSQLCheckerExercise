@@ -42,6 +42,19 @@ public class SQLChecker {
     tk.snapshot();
   }
 
+  /**
+   * Check whether the table referred in column part is declared in table part.
+   * @return <code>true</code> if all declared, <code>false</code> otherwise.
+   */
+  private boolean checkTable() {
+    for (String table : referencedTables) {
+      if (!queriedTables.contains(table)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private boolean parseSql() {
     Token token;
     return tk.nextToken() == Token.SELECT
@@ -49,6 +62,7 @@ public class SQLChecker {
         && tk.nextToken() == Token.FROM
         && parseTables() && queriedTables.size() > 0 // parseTables passes empty case.
         && (!tk.hasNext() || ((token = tk.nextToken()) == Token.WHERE && parseExp()) || token == Token.SEMI)
+        && checkTable()
         && !tk.isError();
   }
 
@@ -266,7 +280,9 @@ public class SQLChecker {
 
     token = tk.nextToken();
     if (token == Token.ITEM) {
+      String maybeTableName = tk.curSymbol();
       if ((token = tk.nextToken()) == Token.POINT) {
+        addRefTable(maybeTableName);
         if ((token = tk.nextToken()) == Token.ITEM) {
           return true;
         }
@@ -299,7 +315,10 @@ public class SQLChecker {
         "SELECT * FROM table1 t WHERE aa AND id=1",
         "SELECT * FROM t1, t2;",
         "SELECT * p FROM t;",
-        "SELECT FROM A"
+        "SELECT FROM A",
+        "SELECT A.b from C",
+        "SELECT A.b from A",
+        "SELECT c from B where C.a = 1"
     };
 
     for (String testcase : testcases) {
