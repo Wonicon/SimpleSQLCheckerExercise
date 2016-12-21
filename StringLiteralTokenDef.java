@@ -8,11 +8,16 @@ public class StringLiteralTokenDef extends TokenDef {
 
   @Override
   String match(String input) {
-    if (input == null || input.isEmpty() || input.charAt(0) != '\'') {
+    int start = 0;
+    while (input.charAt(start) == ' ') {
+      start++;
+    }
+
+    if (input == null || input.isEmpty() || input.charAt(start) != '\'') {
       return null;
     }
     else {
-      int secondIndex, previousIndex = 0;
+      int secondIndex, previousIndex = start;
       do {
         secondIndex = input.indexOf('\'', previousIndex + 1);
         previousIndex = secondIndex;

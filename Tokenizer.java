@@ -18,6 +18,7 @@ public class Tokenizer {
       new TokenDef(Token.WHERE, "WHERE"),
       new TokenDef(Token.IS, "IS"),
       new TokenDef(Token.NULL, "(NOT +)?NULL"),
+      new TokenDef(Token.LIKE, "LIKE"),
       new TokenDef(Token.ITEM, "(\\w+\\.)?\\w+"),
   };
 
@@ -134,6 +135,7 @@ public class Tokenizer {
     tokens.add(Token.IS);
     tokens.add(Token.NULL);
     tokens.add(Token.StringLiteral);
+    tokens.add(Token.LIKE);
 
     return tokens.contains(token);
   }

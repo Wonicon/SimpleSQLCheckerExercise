@@ -14,6 +14,7 @@ enum Token {
   StringLiteral,
   NULL,    // [NOT] NULL
   IS,
+  LIKE,
   NonToken,
   END
 }

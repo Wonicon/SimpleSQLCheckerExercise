@@ -39,6 +39,7 @@ public class SQLChecker {
     priority.put(Token.BOOL, 10);
     priority.put(Token.IS, 9);
     priority.put(Token.CMP, 9);
+    priority.put(Token.LIKE, 9);
     priority.put(Token.OP, 8);
     priority.put(Token.ITEM, 7);
     priority.put(Token.NULL, 7);
@@ -275,9 +276,9 @@ public class SQLChecker {
     if (start == end - 1) {
       switch (TQ.get(start)) {
       case ITEM:
-        return parent == Token.OP || parent == Token.CMP || (parent == Token.IS && isLeft);
+        return parent == Token.OP || parent == Token.CMP || (parent == Token.IS && isLeft) || (parent == Token.LIKE && isLeft);
       case StringLiteral:
-        return parent == Token.CMP;
+        return parent == Token.CMP || (parent == Token.LIKE && !isLeft);
       case NULL:
         return parent == Token.IS && !isLeft;
       default:
@@ -303,8 +304,9 @@ public class SQLChecker {
     // 左右子树合法并且该子树运算结果可以被父节点接收。
     // 顶层可接收布尔和比较的结果，不能接收算数结果。
     return  fineLeft && fineRight
-        && (parent != Token.NonToken || (root == Token.BOOL || root == Token.CMP || root == Token.IS))  // WHERE 层可以接受子句是布尔或比较
-        && (parent != Token.BOOL || (root == Token.BOOL || root == Token.CMP || root == Token.IS))  // BOOL 层可以接受子句是布尔或比较
+        && (parent != Token.NonToken || (root == Token.BOOL || root == Token.CMP || root == Token.IS || root == Token.LIKE))  // WHERE 层可以接受子句是布尔或比较
+        && (parent != Token.BOOL || (root == Token.BOOL || root == Token.CMP || root == Token.IS || root == Token.LIKE))  // BOOL 层可以接受子句是布尔或比较
+        && (parent != Token.IS && parent != Token.LIKE)  // 这里判断的都是运算结果而非值，IS 和 LIKE 不会接受运算结果
         ;
   }
 
@@ -332,5 +334,8 @@ public class SQLChecker {
     test("SELECT cnt(C.a) from C where C.a = 1", true, null);
     test("SELECT cnt(B.a) from C where C.a = 1", false, null);
     test("SELECT a from C where d is not null", true, "测试 IS NOT NULL");
+    test("SELECT a from C where d like '%c'", true, "测试 LIKE");
+    test("SELECT a from C where d like b", false, "测试 LIKE");
+    test("SELECT a from C where (a + 1) like '%c'", false, "测试 LIKE");
   }
 }
