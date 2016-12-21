@@ -3,16 +3,35 @@ import java.util.*;
 public class SQLChecker {
   private Tokenizer tk = null;
 
+  /**
+   * 在 SELECT 和 WHERE 部分被引用的表名集合
+   */
   private Set<String> referencedTables = new TreeSet<>();
 
+  /**
+   * 在 FROM 部分查询的表名
+   */
   private Set<String> queriedTables = new HashSet<>();
 
+  /**
+   * 在 SELECT 部分的列名集合
+   */
   private Set<String> columns = new HashSet<>();
 
   /**
-   * Indicate the select clause use '*' as columns.
+   * WHERE 部分的表达式元素数组
    */
-  private boolean anyColumn = false;
+  private ArrayList<Token> TQ = new ArrayList<>();
+
+  /**
+   * 表达式部分的左括号到右括号的配对索引
+   */
+  private Map<Integer, Integer> L2R = new HashMap<>();
+
+  /**
+   * 运算符优先级
+   */
+  private Map<Token, Integer> priority = new HashMap<>();
 
   SQLChecker(String input) {
     tk = new Tokenizer(input);
@@ -23,17 +42,17 @@ public class SQLChecker {
   }
 
   private void addCol(String s) {
-    System.out.println("Add " + s + " to columns");
+    // System.out.println("Add " + s + " to columns");
     columns.add(s);
   }
 
   private void addRefTable(String s) {
-    System.out.println("Add " + s + " to referenced table");
+    // System.out.println("Add " + s + " to referenced table");
     referencedTables.add(s);
   }
 
   private void addQueriedTable(String tableName) {
-    System.out.println("Add " + tableName + " to queried tables");
+    // System.out.println("Add " + tableName + " to queried tables");
     queriedTables.add(tableName);
   }
 
@@ -58,7 +77,7 @@ public class SQLChecker {
   private boolean parseSql() {
     Token token;
     return tk.nextToken() == Token.SELECT
-        && parseColumns() && (columns.size() > 0 || anyColumn)
+        && parseColumns() && columns.size() > 0
         && tk.nextToken() == Token.FROM
         && parseTables() && queriedTables.size() > 0 // parseTables passes empty case.
         && (!tk.hasNext() || ((token = tk.nextToken()) == Token.WHERE && parseExp()) || token == Token.SEMI)
@@ -83,7 +102,7 @@ public class SQLChecker {
         return false;
       }
       tk.back();
-      anyColumn = true;
+      columns.add("*");
       return true;
     }
 
@@ -203,12 +222,6 @@ public class SQLChecker {
     return verifyTokenQueue();
   }
 
-  private ArrayList<Token> TQ = new ArrayList<>();
-
-  private Map<Integer, Integer> L2R = new HashMap<>();
-
-  private Map<Token, Integer> priority = new HashMap<>();
-
   private boolean verifyTokenQueue() {
     return matchParenthesis() && checkRoot(0, TQ.size(), Token.NonToken);
   }
@@ -308,6 +321,7 @@ public class SQLChecker {
 
   public static void main(String[] args) {
     String[] testcases = {
+        "SELECT *, B from C",
         "SELECT t.id, product p FROM table1 t, table2 WHERE t.id=10;",
         "SELECT id FROM t WHERE name='guguda';",
         "SELECT id FROM, t WHERE sex=1",
@@ -318,7 +332,7 @@ public class SQLChecker {
         "SELECT FROM A",
         "SELECT A.b from C",
         "SELECT A.b from A",
-        "SELECT c from B where C.a = 1"
+        "SELECT c from B where C.a = 1",
     };
 
     for (String testcase : testcases) {
