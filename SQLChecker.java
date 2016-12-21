@@ -9,6 +9,11 @@ public class SQLChecker {
 
   private Set<String> columns = new HashSet<>();
 
+  /**
+   * Indicate the select clause use '*' as columns.
+   */
+  private boolean anyColumn = false;
+
   SQLChecker(String input) {
     tk = new Tokenizer(input);
     priority.put(Token.BOOL, 10);
@@ -40,7 +45,7 @@ public class SQLChecker {
   private boolean parseSql() {
     Token token;
     return tk.nextToken() == Token.SELECT
-        && parseColumns()
+        && parseColumns() && (columns.size() > 0 || anyColumn)
         && tk.nextToken() == Token.FROM
         && parseTables() && queriedTables.size() > 0 // parseTables passes empty case.
         && (!tk.hasNext() || ((token = tk.nextToken()) == Token.WHERE && parseExp()) || token == Token.SEMI)
@@ -64,6 +69,7 @@ public class SQLChecker {
         return false;
       }
       tk.back();
+      anyColumn = true;
       return true;
     }
 
@@ -293,6 +299,7 @@ public class SQLChecker {
         "SELECT * FROM table1 t WHERE aa AND id=1",
         "SELECT * FROM t1, t2;",
         "SELECT * p FROM t;",
+        "SELECT FROM A"
     };
 
     for (String testcase : testcases) {
