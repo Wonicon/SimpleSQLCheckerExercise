@@ -2,7 +2,7 @@ import java.util.Scanner;
 import java.util.ArrayList;
 
 public class Tokenizer {
-  private TokenDef[] tokenDefs = {
+  private static TokenDef[] tokenDefs = {
       new StringLiteralTokenDef(Token.StringLiteral),
       new TokenDef(Token.OP, "\\+|-|/"),  // Don't forget 'star'
       new TokenDef(Token.PRED, "<>|!=|<=|>=|=|>|<"),
@@ -19,120 +19,111 @@ public class Tokenizer {
       new TokenDef(Token.POINT, "\\."),
   };
 
-  private class Result {
-    private Token type;
-
-    private String matched;
-
-    private String unmatched;
-
-    Token type() {
-      return type;
-    }
-
-    String matched() {
-      return matched;
-    }
-
-    String unmatched() {
-      return unmatched;
-    }
-
-    Result(Token type, String matched, String unmatched) {
-      this.type = type;
-      this.matched = matched;
-      this.unmatched = unmatched;
-    }
-
-    @Override
-    public String toString() {
-      return type + ": " + matched;
-    }
-  }
-
-  private Result match(String input) {
-    for (TokenDef tokenDef : tokenDefs) {
-      String matched = tokenDef.match(input);
-      if (matched != null) {
-        return new Result(tokenDef.type(), matched.trim(), input.substring(matched.length()));
-      }
-    }
-    return null;
-  }
-
-  private String stream = null;
-
-  private boolean error = false;
-
-  private boolean end = false;
-
+  /**
+   * Token 序列。
+   */
   private ArrayList<Token> tokenQueue = new ArrayList<>();
 
+  /**
+   * Token 对应的字符串序列。
+   */
   private ArrayList<String> literalQueue = new ArrayList<>();
 
+  /**
+   * 游标位置，在对应下表的 token 的左侧。
+   */
   private int queueHead = 0;
 
+  /**
+   * 将输入的 SQL 语句分解成 token 序列
+   * @param input 输入的 SQL 语句
+   */
   Tokenizer(String input) {
-    this.stream = input;
+    while (!input.isEmpty()) {
+      Token type = Token.NonToken;
+      String matched = "";
+
+      // 依次匹配 token 模式
+      for (TokenDef tokenDef : tokenDefs) {
+        matched = tokenDef.match(input);
+        if (matched != null) {
+          type = tokenDef.type();
+          break;
+        }
+      }
+
+      if (type != Token.NonToken) {  // 添加匹配的 token，左移输入串。
+        tokenQueue.add(type);
+        literalQueue.add(matched.trim());
+        input = input.substring(matched.length());
+      }
+      else {  // 没有匹配到任何 token 模式，发生词法错误。
+        tokenQueue.clear();
+        break;
+      }
+    }
   }
 
+  /**
+   * 发生词法错误后，会清空 token 队列。此外会与空输入的情况混淆。
+   * 但是空输入也是不接受的，所以对实际结果没有影响。
+   * @return 是否发生词法错误。
+   */
   boolean isError() {
-    return error;
+    return tokenQueue.isEmpty();
   }
 
+  /**
+   * @return 是否还有后续 token.
+   */
   boolean hasNext() {
-    return (!stream.isEmpty() || queueHead < tokenQueue.size()) && !isError();
+    return queueHead < tokenQueue.size() && !isError();
   }
 
+  /**
+   * @return 最近一次 <code>nextToken</code> 返回的 token 对应的字符串。
+   */
   String curSymbol() {
-    assert literalQueue.size() == tokenQueue.size();
     return literalQueue.get(queueHead - 1);
   }
 
-  void snapshot() {
-    for (int i = 0; i < queueHead; i++) {
-      System.out.print(literalQueue.get(i) + " ");
-    }
-    System.out.println();
-  }
-
+  /**
+   * 获取下一位 token 的类型，同时将游标前进一位。
+   * 执行之前，游标与 token 序列的相对关系如下：
+   *   A | B C E ...
+   * 执行之后如下：
+   *   A B | C E ...
+   * 返回的是类型 B
+   *
+   * @return 下一个 token 的类型，若 token 序列已经全部遍历，返回 END.
+   */
   Token nextToken() {
-    assert queueHead <= tokenQueue.size();
-    if (queueHead == tokenQueue.size()) {
-      Result rst = match(stream);
-      if (rst != null) {
-        stream = rst.unmatched();
-        tokenQueue.add(rst.type());
-        literalQueue.add(rst.matched());
-      }
-      else if (stream.isEmpty()) {
-        end = true;
-        return Token.END;
-      }
-      else {
-        error = true;
-        System.out.println("Unrecognized token " + stream.trim().charAt(0));
-        return Token.NonToken;
-      }
-    }
-    return tokenQueue.get(queueHead++);
+    return (queueHead < tokenQueue.size()) ? tokenQueue.get(queueHead++) : Token.END;
   }
 
+  /**
+   * 将游标回退一位。若已经遍历完 token 序列，即用户获得 END 符号后，回退不产生实际效果。
+   * 之后仍然获得 END 符号。
+   */
   void back() {
-    if (!end) {
+    if (queueHead < tokenQueue.size()) {
       queueHead--;
     }
   }
 
+  /**
+   * 从标准输入逐行接受 SQL 语句，观察分解的 token 序列。
+   * @param args 不使用
+   */
   public static void main(String[] args) {
     Scanner input = new Scanner(System.in);
     System.out.println(">>>");
     while (input.hasNext()) {
       Tokenizer tk = new Tokenizer(input.nextLine());
       while (tk.hasNext()) {
-        tk.nextToken();
+        System.out.println(tk.nextToken() + " ");
       }
-      System.out.println(">>>");
+      System.out.println("\n>>>");
     }
   }
 }

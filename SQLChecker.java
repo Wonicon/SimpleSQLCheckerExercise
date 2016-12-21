@@ -1,3 +1,5 @@
+import sun.security.krb5.internal.crypto.Des;
+
 import java.util.*;
 
 public class SQLChecker {
@@ -58,7 +60,6 @@ public class SQLChecker {
 
   private void unexpected(Token who, String where) {
     System.out.println("Unexpected " + who + " " + where);
-    tk.snapshot();
   }
 
   /**
@@ -98,7 +99,6 @@ public class SQLChecker {
     if (token == Token.STAR) {
       token = tk.nextToken();
       if (token == Token.ITEM) {
-        System.out.println("Cannot rename *");
         return false;
       }
       tk.back();
@@ -278,8 +278,6 @@ public class SQLChecker {
       }
     }
 
-    System.out.println("Root is " + root + " at " + rootIdx + " between " + start + ", " + end + ", and parent is " + parent);
-
     return checkRoot(start, rootIdx, root) && checkRoot(rootIdx + 1, end, root)
         && (parent != Token.NonToken || root == Token.BOOL || root == Token.PRED)
         && (parent != Token.BOOL || root == Token.BOOL || root == Token.PRED);
@@ -319,24 +317,26 @@ public class SQLChecker {
     }
   }
 
-  public static void main(String[] args) {
-    String[] testcases = {
-        "SELECT *, B from C",
-        "SELECT t.id, product p FROM table1 t, table2 WHERE t.id=10;",
-        "SELECT id FROM t WHERE name='guguda';",
-        "SELECT id FROM, t WHERE sex=1",
-        "SELECT name FROM table1 t WHERE;",
-        "SELECT * FROM table1 t WHERE aa AND id=1",
-        "SELECT * FROM t1, t2;",
-        "SELECT * p FROM t;",
-        "SELECT FROM A",
-        "SELECT A.b from C",
-        "SELECT A.b from A",
-        "SELECT c from B where C.a = 1",
-    };
-
-    for (String testcase : testcases) {
-      System.out.println(testcase + ": " + new SQLChecker(testcase).parseSql());
+  private static void test(String sql, boolean expect, String desc) {
+    System.out.println(desc + ": " + sql + " (expect "+ expect + ")");
+    if ((new SQLChecker(sql).parseSql()) != expect) {
+      System.out.println("Failed the test");
+      System.exit(-1);
     }
+  }
+
+  public static void main(String[] args) {
+    test("SELECT *, B from C", false, null);
+    test("SELECT t.id, product p FROM table1 t, table2 WHERE t.id=10;", true, null);
+    test("SELECT id FROM t WHERE name='guguda';", true, null);
+    test("SELECT id FROM, t WHERE sex=1", false, null);
+    test("SELECT name FROM table1 t WHERE;", false, null);
+    test("SELECT * FROM table1 t WHERE aa AND id=1", false, null);
+    test("SELECT * FROM t1, t2;", true, null);
+    test("SELECT * p FROM t;", false, null);
+    test("SELECT FROM A", false, null);
+    test("SELECT A.b from C", false, null);
+    test("SELECT A.b from A", true, null);
+    test("SELECT c from B where C.a = 1", false, null);
   }
 }
