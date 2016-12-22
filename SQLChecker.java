@@ -28,22 +28,8 @@ public class SQLChecker {
    */
   private Map<Integer, Integer> L2R = new HashMap<>();
 
-  /**
-   * 运算符优先级
-   */
-  private Map<Token, Integer> priority = new HashMap<>();
-
   private SQLChecker(String input) {
     tk = new Tokenizer(input);
-
-    priority.put(Token.BOOL, 10);
-    priority.put(Token.IS, 9);
-    priority.put(Token.CMP, 9);
-    priority.put(Token.LIKE, 9);
-    priority.put(Token.OP, 8);
-    priority.put(Token.ITEM, 7);
-    priority.put(Token.NULL, 7);
-    priority.put(Token.StringLiteral, 7);
   }
 
   private void addQueriedTable(String tableName) {
@@ -55,7 +41,7 @@ public class SQLChecker {
    * 检查引用的表名是否都在 FROM 部分声明。
    */
   private boolean checkReference() {
-    for (String table : tk.getReferencedTables()) {
+    for (String table : tk.referencedTables) {
       if (!queriedTables.contains(table)) {
         return false;
       }
@@ -241,18 +227,18 @@ public class SQLChecker {
     int rootIdx = -1;
     for (int i = start; i < end; i++) {
       Token t = TQ.get(i);
-      Integer pri;
       if (t == Token.LP) {
         i = L2R.get(i);
       }
-      else if ((pri = priority.get(t)) != null) {
+      else {
+        // 若 t 是没有添加进 map 的 token 类型，这里会触发 null exception.
+        // 但是这里的 token 已经经过了 parseExp 的过滤。参与表达式的符号都有设定优先级，
+        // 如果这里出现 null exception, 则是完全意料之外的情况，尽早暴露比较好。
+        int pri = Tokenizer.priority.get(t);
         if (pri > maxPri) {
           maxPri = pri;
           rootIdx = i;
         }
-      }
-      else {
-        return -1;
       }
     }
     return rootIdx;
@@ -310,32 +296,39 @@ public class SQLChecker {
         ;
   }
 
-  private static void test(String sql, boolean expect, String desc) {
-    System.out.println(desc + ": " + sql + " (expect "+ expect + ")");
-    if ((new SQLChecker(sql).parseSql()) != expect) {
+  private static void test(String desc, String sql, boolean expect) {
+    boolean result = new SQLChecker(sql).parseSql();
+    System.out.println(desc + ":" + " expect "+ expect + ", result " + result + "\n  " + sql);
+    if (result != expect) {
       System.out.println("Failed the test");
       System.exit(-1);
     }
   }
 
   public static void main(String[] args) {
-    test("SELECT A.b from C", false, null);
-    test("SELECT * FROM t1, t2;", true, null);
-    test("SELECT id FROM t WHERE name='guguda';", true, null);
-    test("SELECT t.id, product p FROM table1 t, table2 WHERE t.id=10;", true, null);
-    test("SELECT *, B from C", false, null);
-    test("SELECT id FROM, t WHERE sex=1", false, null);
-    test("SELECT name FROM table1 t WHERE;", false, null);
-    test("SELECT * FROM table1 t WHERE aa AND id=1", false, null);
-    test("SELECT * p FROM t;", false, null);
-    test("SELECT FROM A", false, null);
-    test("SELECT A.b from A", true, null);
-    test("SELECT c from B where C.a = 1", false, null);
-    test("SELECT cnt(C.a) from C where C.a = 1", true, null);
-    test("SELECT cnt(B.a) from C where C.a = 1", false, null);
-    test("SELECT a from C where d is not null", true, "测试 IS NOT NULL");
-    test("SELECT a from C where d like '%c'", true, "测试 LIKE");
-    test("SELECT a from C where d like b", false, "测试 LIKE");
-    test("SELECT a from C where (a + 1) like '%c'", false, "测试 LIKE");
+    test("讲义样例1-通过", "SELECT t.id, product p FROM table1 t, table2 WHERE t.id=10;", true);
+    test("讲义样例2-通过", "SELECT id FROM t WHERE name='guguda';", true);
+    test("讲义样例3-缺少FROM关键字", "SELECT id FROM, t WHERE sex=1", false);
+    test("讲义样例4-WHERE后缺少条件", "SELECT name FROM table1 t WHERE;", false);
+    test("讲义样例5-有一个条件不完整", "SELECT * FROM table1 t WHERE aa AND id=1", false);
+    test("讲义样例6-通过", "SELECT * FROM t1, t2;", true);
+    test("讲义样例7-不可以给*起别名", "SELECT * p FROM t;", false);
+    test("使用通配符不能再指定列名", "SELECT *, B from C", false);
+    test("不允许空列", "SELECT FROM A", false);
+    test("Where语句中出现的表格名要在From后面出现过", "SELECT c from B where C.a = 1", false);
+    test("Select语句中出现的表格名要在From后面出现过", "SELECT C.c from B where a = 1", false);
+    test("测试积累函数", "SELECT cnt(C.a) from C where C.a = 1", true);
+    test("测试函数结果别名", "SELECT cnt(a) b from C", true);
+    test("支持IS NOT NULL", "SELECT a from C where d is not null", true);
+    test("支持LIKE", "SELECT a from C where d like '%c' and a = 1", true);
+    test("LIKE右边只能是字符串", "SELECT a from C where d like b", false);
+    test("LIKE左边只能是列名", "SELECT a from C where (a + 1) like '%c'", false);
+    test("词法错误", "SELECT ? from c", false);
+    test("未闭合字符串", "SELECT * from C where a = '\\'", false);
+    test("未匹配括号1", "SELECT * from C where (a + (b + c) = 1", false);
+    test("未匹配括号2", "SELECT * from C where (a + )(b + c) = 1", false);
+    test("未匹配括号3", "SELECT * from C where (a + ))(b + c) = 1", false);
+    test("不允许空括号", "SELECT C.a b from C where a + () = 1", false);
+    test("表达式错误", "SELECT * from C where + = 1", false);
   }
 }

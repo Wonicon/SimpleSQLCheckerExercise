@@ -1,8 +1,8 @@
 /**
  * String literal token uses specific procedure to match.
  */
-public class StringLiteralTokenDef extends TokenDef {
-  StringLiteralTokenDef(Token type) {
+public class StringLiteralTokenMatcher extends TokenMatcher {
+  StringLiteralTokenMatcher(Token type) {
     super(type, null);
   }
 
@@ -31,10 +31,5 @@ public class StringLiteralTokenDef extends TokenDef {
         return input.substring(0, secondIndex + 1);
       }
     }
-  }
-
-  public static void main(String[] args) {
-    StringLiteralTokenDef inst = new StringLiteralTokenDef(Token.StringLiteral);
-    System.out.println(inst.match("'aaa\\'bbb'ccc'ddd'eee"));
   }
 }

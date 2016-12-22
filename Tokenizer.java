@@ -1,39 +1,50 @@
-import com.sun.corba.se.spi.ior.IORTemplate;
-
 import java.util.*;
 
 public class Tokenizer {
-  private static TokenDef[] tokenDefs = {
-      new StringLiteralTokenDef(Token.StringLiteral),
-      new TokenDef(Token.OP, "\\+|-|/"),  // Don't forget 'star'
-      new TokenDef(Token.CMP, "<>|!=|<=|>=|=|>|<"),
-      new TokenDef(Token.BOOL, "AND|OR"),
-      new TokenDef(Token.LP, "\\("),
-      new TokenDef(Token.RP, "\\)"),
-      new TokenDef(Token.COMMA, ","),
-      new TokenDef(Token.FROM, "FROM"),
-      new TokenDef(Token.SELECT, "SELECT"),
-      new TokenDef(Token.SEMI, ";"),
-      new TokenDef(Token.STAR, "\\*"),
-      new TokenDef(Token.WHERE, "WHERE"),
-      new TokenDef(Token.IS, "IS"),
-      new TokenDef(Token.NULL, "(NOT +)?NULL"),
-      new TokenDef(Token.LIKE, "LIKE"),
-      new TokenDef(Token.ITEM, "(\\w+\\.)?\\w+"),
+  /**
+   * TokenMatcher 集合，顺序代表了匹配优先级。
+   */
+  private static final TokenMatcher[] tokenMatcher = {
+      new StringLiteralTokenMatcher(Token.StringLiteral),
+      new TokenMatcher(Token.OP, "\\+|-|/"),  // Don't forget 'star'
+      new TokenMatcher(Token.CMP, "<>|!=|<=|>=|=|>|<"),
+      new TokenMatcher(Token.BOOL, "AND|OR"),
+      new TokenMatcher(Token.LP, "\\("),
+      new TokenMatcher(Token.RP, "\\)"),
+      new TokenMatcher(Token.COMMA, ","),
+      new TokenMatcher(Token.FROM, "FROM"),
+      new TokenMatcher(Token.SELECT, "SELECT"),
+      new TokenMatcher(Token.SEMI, ";"),
+      new TokenMatcher(Token.STAR, "\\*"),
+      new TokenMatcher(Token.WHERE, "WHERE"),
+      new TokenMatcher(Token.IS, "IS"),
+      new TokenMatcher(Token.NULL, "(NOT +)?NULL"),  // 视 NOT NULL 和 NULL 在语法上等价，简化 parser 的逻辑。
+      new TokenMatcher(Token.LIKE, "LIKE"),
+      new TokenMatcher(Token.ITEM, "(\\w+\\.)?\\w+"),  // 视带表名的列名和列名在语法上等价，简化 parser 的逻辑。
   };
+
+  /**
+   * 表达式允许的运算符及优先级。
+   */
+  public static final Map<Token, Integer> priority = new HashMap<>();
+
+  static {
+    priority.put(Token.BOOL, 10);
+    priority.put(Token.IS, 9);
+    priority.put(Token.CMP, 9);
+    priority.put(Token.LIKE, 9);
+    priority.put(Token.OP, 8);
+    priority.put(Token.ITEM, 7);
+    priority.put(Token.NULL, 7);
+    priority.put(Token.StringLiteral, 7);
+    priority.put(Token.LP, 6);  // 无意义值
+    priority.put(Token.RP, 6);  // 无意义值
+  }
 
   /**
    * 在 SELECT 和 WHERE 部分被引用的表名集合。
    */
-  private Set<String> referencedTables = new TreeSet<>();
-
-  /**
-   * <code>referenceTables</code> 的 getter.
-   * @return 在 SELECT 和 WHERE 部分被引用的表名集合。
-   */
-  public Set<String> getReferencedTables() {
-    return referencedTables;
-  }
+  public final Set<String> referencedTables = new TreeSet<>();
 
   /**
    * Token 序列。
@@ -55,10 +66,10 @@ public class Tokenizer {
       String matched = "";
 
       // 依次匹配 token 模式
-      for (TokenDef tokenDef : tokenDefs) {
-        matched = tokenDef.match(input);
+      for (TokenMatcher tokenMatcher : Tokenizer.tokenMatcher) {
+        matched = tokenMatcher.match(input);
         if (matched != null) {
-          type = tokenDef.type();
+          type = tokenMatcher.type;
           break;
         }
       }
@@ -111,12 +122,9 @@ public class Tokenizer {
    * @return Token 的字符串。
    */
   public String str(int i) {
-    if (i < literalQueue.size()) {
-      return literalQueue.get(i);
-    }
-    else {
-      return "";
-    }
+    // 这里没有检查越界，因为经过测试，parser 的行为似乎不会导致越界发生。
+    // 如果发生越界异常，宜尽早获知。
+    return literalQueue.get(i);
   }
 
   /**
@@ -125,25 +133,7 @@ public class Tokenizer {
    * @return 如果 <code>token</code> 是允许出现在表达式中的符号，返回 <code>true</code>, 否则 <code>false</code>.
    */
   public static boolean isAllowedInExp(Token token) {
-    Set<Token> tokens = new HashSet<>();
-    tokens.add(Token.ITEM);
-    tokens.add(Token.BOOL);
-    tokens.add(Token.CMP);
-    tokens.add(Token.OP);
-    tokens.add(Token.LP);
-    tokens.add(Token.RP);
-    tokens.add(Token.IS);
-    tokens.add(Token.NULL);
-    tokens.add(Token.StringLiteral);
-    tokens.add(Token.LIKE);
-
-    return tokens.contains(token);
-  }
-
-  public static boolean isValue(Token token) {
-    Set<Token> tokens = new HashSet<>();
-    Collections.addAll(tokens, Token.ITEM, Token.StringLiteral, Token.NULL);
-    return tokens.contains(token);
+    return priority.keySet().contains(token);
   }
 
   /**
