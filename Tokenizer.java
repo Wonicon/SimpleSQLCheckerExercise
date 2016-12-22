@@ -28,6 +28,11 @@ public class Tokenizer {
    */
   public static final Map<Token, Integer> priority = new HashMap<>();
 
+  /**
+   * 支持的函数名集合。
+   */
+  public static final Set<String> func = new HashSet<>();
+
   static {
     priority.put(Token.BOOL, 10);
     priority.put(Token.IS, 9);
@@ -39,6 +44,16 @@ public class Tokenizer {
     priority.put(Token.StringLiteral, 7);
     priority.put(Token.LP, 6);  // 无意义值
     priority.put(Token.RP, 6);  // 无意义值
+
+    Collections.addAll(func,
+        "count",
+        "avg",
+        "first",
+        "last",
+        "max",
+        "min",
+        "sum",
+        "len");
   }
 
   /**
@@ -134,6 +149,13 @@ public class Tokenizer {
    */
   public static boolean isAllowedInExp(Token token) {
     return priority.keySet().contains(token);
+  }
+
+  /**
+   * 判断给定字符串是否是支持的函数名。
+   */
+  public static boolean isFunc(String funcName) {
+    return func.contains(funcName.toLowerCase());
   }
 
   /**

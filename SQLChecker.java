@@ -106,15 +106,10 @@ public class SQLChecker {
   private int parseColumns(int i) {
     int r;
 
-    // Func([TableName.]ColName) Alias
-    if ((r = tryParse(i, Token.ITEM, Token.LP, Token.ITEM, Token.RP, Token.ITEM)) > 0) {
-      hasColumns = true;
-      return r;
-    }
-
-    // Func([TableName.]ColName)
-    if ((r = tryParse(i, Token.ITEM, Token.LP, Token.ITEM, Token.RP)) > 0) {
-      hasColumns = true;
+    // Func([TableName.]ColName) [Alias]
+    if ((r = tryParse(i, Token.ITEM, Token.LP, Token.ITEM, Token.RP, Token.ITEM)) > 0
+        || (r = tryParse(i, Token.ITEM, Token.LP, Token.ITEM, Token.RP)) > 0) {
+      hasColumns = Tokenizer.isFunc(tk.str(i));
       return r;
     }
 
@@ -317,8 +312,10 @@ public class SQLChecker {
     test("不允许空列", "SELECT FROM A", false);
     test("Where语句中出现的表格名要在From后面出现过", "SELECT c from B where C.a = 1", false);
     test("Select语句中出现的表格名要在From后面出现过", "SELECT C.c from B where a = 1", false);
-    test("测试积累函数", "SELECT cnt(C.a) from C where C.a = 1", true);
-    test("测试函数结果别名", "SELECT cnt(a) b from C", true);
+    test("测试积累函数", "SELECT count(C.a) from C where C.a = 1", true);
+    test("测试函数结果别名", "SELECT count(a) b from C", true);
+    test("不支持函数结果与其他列名共存", "SELECT count(a), b from C", false);
+    test("不存在的函数", "SELECT foo(a) b from C", false);
     test("支持IS NOT NULL", "SELECT a from C where d is not null", true);
     test("支持LIKE", "SELECT a from C where d like '%c' and a = 1", true);
     test("LIKE右边只能是字符串", "SELECT a from C where d like b", false);
